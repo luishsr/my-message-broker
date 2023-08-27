@@ -42,19 +42,24 @@ async fn main() {
         }
 
         if domain == TOPIC || operation == CREATE{
-            let mut new_topic: Topic;
-            new_topic.key = input;
-            new_topic.description = input;
-            new_topic.subscribers = HashMap::new();
+            let new_topic: Topic = Topic {
+                key: input,
+                description: "".to_string(),
+                subscribers: Default::default(),
+                message_list: Default::default(),
+            };
 
             queue.register_topic(new_topic);
         } else if domain == QUEUE {
             if operation == SUBSCRIBE {
-                let mut new_subscriber: Subscriber;
+                let mut new_subscriber: Subscriber = Subscriber {
+                    key: "".to_string(),
+                    address: "".to_string()
+                };
                 new_subscriber.address = input;
                 new_subscriber.key = complement;
 
-                queue.subscribe(complement, &new_subscriber);
+                queue.subscribe(new_subscriber.key, &new_subscriber);
             } else { // Push
                 let mut new_message: Message;
                 new_message.content = input;
@@ -90,16 +95,16 @@ async fn write_socket(address: &String, mut message: String) {
     let listener = TcpListener::bind(address).await;
 
     match listener.expect("REASON").accept().await {
-        Ok((mut socket, addr)) => {
+        Ok((mut socket, _addr)) => {
             // To see who's connected
-            //println!("{:?}", addr);
+            //println!(addr.to_string());
 
             // 1
             let (reader, mut writer) = socket.split();
             let mut reader = tokio::io::BufReader::new(reader);
 
             match reader.read_line(&mut message).await {
-                Ok(bytes_size) => {
+                Ok(_bytes_size) => {
                     // bytes_size can be used somewhere..
                     match writer.write_all(&message.as_bytes()).await {
                         Ok(()) => (),
@@ -132,8 +137,9 @@ struct Message {
 }
 
 impl Topic {
-    fn subscribe(&mut self, &mut subscriber: Subscriber) {
-        self.subscribers.insert(subscriber.key, subscriber);
+    fn subscribe(&mut self, mut subscriber: Subscriber) {
+        let mut new_subscriber = Subscriber {key:subscriber.key, address: subscriber.address};
+        self.subscribers.insert(new_subscriber.key, new_subscriber);
     }
 }
 
@@ -142,8 +148,9 @@ struct Queue {
 }
 
 impl Queue {
-    fn register_topic(&mut self, &mut topic: Topic) {
-       self.topics.insert(topic.key, topic);
+    fn register_topic(&mut self, mut topic: Topic) {
+        let mut new_topic = Topic {key: topic.key, description: topic.description, subscribers: topic.subscribers, message_list: topic.message_list};
+       self.topics.insert(new_topic.key, new_topic);
     }
 
     fn subscribe(&mut self, &mut topic_name: String, subscriber: &Subscriber) {
@@ -155,7 +162,7 @@ impl Queue {
 
         // Broadcast to the Subscribers of the topic
         for subscriber in self.topics.get(topic_name){
-            subscriber.broad
+            //subscriber.broad
         }
     }
 }
